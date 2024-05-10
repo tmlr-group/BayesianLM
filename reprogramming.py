@@ -21,8 +21,7 @@ class PaddingVR(nn.Module):
 
         mask = np.repeat(np.expand_dims(mask, 0), repeats=3, axis=0)
         mask = torch.Tensor(mask)
-        self.register_buffer("mask", F.pad(mask, (self.l_pad, self.r_pad, self.l_pad, self.r_pad), value=1)) # register a buffer that should not to be considered a model parameter
-
+        self.register_buffer("mask", F.pad(mask, (self.l_pad, self.r_pad, self.l_pad, self.r_pad), value=1))
     def forward(self, x):
         x = F.pad(x, (self.l_pad, self.r_pad, self.l_pad, self.r_pad), value=0) + torch.sigmoid(self.program) * self.mask
         if self.normalize is not None:
