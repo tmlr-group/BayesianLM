@@ -4,8 +4,10 @@ import torch.nn.functional as F
 import numpy as np
 
 class PaddingVR(nn.Module):
+    '''
+        Padding-based Input Visual Reprogramming
+    '''
     def __init__(self, out_size, mask, init='zero', normalize=None):
-
         super(PaddingVR, self).__init__()
         assert mask.shape[0] == mask.shape[1]
         in_size = mask.shape[0]
@@ -30,6 +32,9 @@ class PaddingVR(nn.Module):
 
 
 class WatermarkingVR(nn.Module):
+    '''
+        Watermarking-based Input Visual Reprogramming
+    '''
     def __init__(self, size, pad):
         super(WatermarkingVR, self).__init__()
 
