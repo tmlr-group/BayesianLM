@@ -14,7 +14,7 @@ To implement the results, please follow Appendix E to download the dataset first
         python train_vm.py --dataset sun397 --mapping blm --seed 0
         python train_vlm.py --dataset sun397 --mapping blm --seed 0
 
-### Improved Bayesian-Guided Label Mapping (BLM++)
+### Improved Bayesian-Guided Label Mapping (BLM+)
         python train_vm.py --dataset sun397 --mapping blmpp --seed 0
         python train_vlm.py --dataset sun397 --mapping blmpp --seed 0
 
