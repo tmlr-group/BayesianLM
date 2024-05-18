@@ -128,7 +128,7 @@ def blmpp_reweight_matrix(visual_prompt, network, data_loader, lap=0, k=3):
         network.eval()
     probs_list = []
     ys = []
-    pbar = tqdm(data_loader, total=len(data_loader), desc=f"BLM++", ncols=100) if len(data_loader) > 20 else data_loader
+    pbar = tqdm(data_loader, total=len(data_loader), desc=f"BLM+", ncols=100) if len(data_loader) > 20 else data_loader
     for x, y in pbar:
         x, y = x.to(device), y.to(device)
         with torch.no_grad():
