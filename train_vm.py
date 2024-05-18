@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
 
     for epoch in range(config_vm['epoch']):
-        # Label Mapping for ILM, BLM, BLM++
+        # Label Mapping for ILM, BLM, BLM+
         if args.mapping == 'ilm':
             mapping_matrix = one2one_mappnig_matrix(visual_prompt, network, loaders['train'])
             label_mapping = partial(label_mapping_base, mapping_sequence=mapping_matrix)
