@@ -55,7 +55,7 @@ if __name__ == '__main__':
     best_acc = 0.
     scaler = GradScaler()
     for epoch in range(config_vlm['epoch']):
-        # Label Mapping for ILM, BLM, BLM++
+        # Label Mapping for ILM, BLM, BLM+
         if args.mapping == 'ilm':
             mapping_matrix = one2one_mappnig_matrix(visual_prompt, network, loaders['train'])
             label_mapping = partial(label_mapping_base, mapping_sequence=mapping_matrix)
