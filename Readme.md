@@ -7,7 +7,7 @@ This is the implementation of our paper submitted for NIPS2024.
         pip install -r requirements.txt
 
 ## Dataset Preparation
-To implement the results, please follow Appendix E to download the dataset first, and modify the 'data_path' in cfg.py.
+To implement the results, please follow Appendix D to download the dataset first, and modify the 'data_path' in cfg.py.
 
 ## Training
 ### Bayesian-Guided Label Mapping (BLM)
