@@ -20,7 +20,7 @@ The assignment of values to the constructed matrices is guided by Bayesian condi
 
 | Pretrained/Downstream Images  |  Pretrained/Downstream Labels | Pretrained Model| Input VR | Outpur LM | Downstram Training Dataset |
 |-----------------------------|-------------|-------------|----------------|-------------|------------|
-| $X^{\rm S} \in \mathcal{X}^{\rm S}$  / $X^{\rm T} \in \mathcal{X}^{\rm T}$|  $Y^{\rm S} \in \mathcal{Y}^{\rm S}$ / $Y^{\rm T} \in \mathcal{Y}^{\rm T}$  | $f_{\rm pre}: \mathcal{X}^{\rm S} \mapsto \mathbb{R}^{\|\mathcal{Y}^{\rm S}\|}$ | $f_{\rm in}(\cdot \| \theta): \mathcal{X^{\rm T}} \mapsto {\mathcal{X}}^{\rm S}$ | $f_{\rm out}^{\omega}(\cdot): \mathbb{R}^{k_{\rm S}} \mapsto \mathbb{R}^{k_{\rm T}}$ | $\mathcal{D}^{\rm T} = \{ (x_i^{\rm T}, y_i^{\rm T}) \}_{i=1}^{n}$ |
+| $X^{\rm S} \in \mathcal{X}^{\rm S}$  / $X^{\rm T} \in \mathcal{X}^{\rm T}$|  $Y^{\rm S} \in \mathcal{Y}^{\rm S}$ / $Y^{\rm T} \in \mathcal{Y}^{\rm T}$  | $f_{\rm pre}: \mathcal{X}^{\rm S} \mapsto \mathbb{R}^{\|\mathcal{Y}^{\rm S}\|}$ | $f_{\rm in}(\cdot \| \theta): \mathcal{X^{\rm T}} \mapsto {\mathcal{X}}^{\rm S}$ | $f_{\rm out}^{\omega}(\cdot): \mathbb{R}^{\|\mathcal{Y}^{\rm S}\|} \mapsto \mathbb{R}^{\|\mathcal{Y}^{\rm T}\|}$ | $\mathcal{D}^{\rm T} = \\{(x_i^{\rm T}, y_i^{\rm T})\\}_{i=1}^{n}$ |
 
 ## Environment
 
