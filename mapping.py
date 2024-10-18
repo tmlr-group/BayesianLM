@@ -2,6 +2,7 @@ from torch.nn.functional import one_hot
 from tqdm import tqdm
 import torch.nn.functional as F
 import torch
+import torch.nn as nn
 
 def label_mapping_base(logits, mapping_sequence):
     '''
@@ -113,7 +114,7 @@ def blm_reweight_matrix(visual_prompt, network, data_loader, lap=1):
     return norm_matrix.to(device)
 
 
-def blmpp_reweight_matrix(visual_prompt, network, data_loader, lap=0, k=3):
+def blmp_reweight_matrix(visual_prompt, network, data_loader, lap=0, k=3):
     '''
     The optimal real reweight mapping matrix (Improved Bayesian-Guided Label Mapping)
     :param visual_prompt: Current input VR
@@ -162,3 +163,80 @@ def blmpp_reweight_matrix(visual_prompt, network, data_loader, lap=0, k=3):
     target_sum = torch.sum(matrix, dim=0)
     norm_matrix = torch.div(matrix, target_sum)
     return norm_matrix.to(device)
+
+def update_blmp_reweight_matrix(probs, ys, device, lap=0):
+    '''
+    Updating the optimal real reweight mapping matrix after the first epoch (Improved Bayesian-Guided Label Mapping)
+    :param probs: the stored probabilities of the last epoch
+    :param ys: the stored ground truth labels of the last epoch
+    :param device: current device 'cpu' or 'cuda:0'
+    :param lap: laplace smooth factor - $\lambda$
+    :return: the updated optimal real reweight mapping matrix
+    '''
+    matrix = torch.zeros((len(ys.unique()), probs.size(-1)))
+    indices = ys.view(-1, 1).long().expand(-1, matrix.size(-1))
+    matrix.scatter_add_(0, indices, probs)
+    matrix = matrix.t()
+
+    # Begin calculating marginal distribution
+    classes_sum = torch.sum(matrix, dim=1, keepdim=True)
+
+    # Laplace Smoothing
+    classes_sum = classes_sum + lap * torch.ones_like(classes_sum)
+    matrix = torch.div(matrix, classes_sum)
+
+    # Normalization
+    target_sum = torch.sum(matrix, dim=0)
+    norm_matrix = torch.div(matrix, target_sum)
+    return norm_matrix.to(device)
+
+def update_blm_reweight_matrix(fx0s, ys, device, lap=1):
+    '''
+    Updating the optimal real reweight mapping matrix after the first epoch (Bayesian-Guided Label Mapping)
+    :param fx0s: the stored output results of the last epoch
+    :param ys: the stored ground truth labels of the last epoch
+    :param device: current device 'cpu' or 'cuda:0'
+    :param lap: laplace smooth factor - $\lambda$
+    :return: the updated optimal real reweight mapping matrix
+    '''
+    dist_matrix = get_freq_distribution(fx0s, ys)
+
+    # Begin calculating marginal distribution
+    classes_sum = torch.sum(dist_matrix, dim=1, keepdim=True)
+
+    # Laplace Smoothing
+    classes_sum = classes_sum + lap * torch.ones_like(classes_sum)
+    matrix = torch.div(dist_matrix, classes_sum)
+
+    # Normalization
+    target_sum = torch.sum(matrix, dim=0)
+    norm_matrix = torch.div(matrix, target_sum)
+    return norm_matrix.to(device)
+
+def update_one2one_mappnig_matrix(fx0s, ys):
+    '''
+    Updating the optimal real reweight mapping matrix after the first epoch (Iterative Label Mapping)
+    :param fx0s: the stored output results of the last epoch
+    :param ys: the stored ground truth labels of the last epoch
+    :return: the updated optimal one-to-one mapping sequence
+    '''
+    freq_matrix = get_freq_distribution(fx0s, ys)
+    pairs = torch.nonzero(greedy_mapping(freq_matrix))
+    mapping_sequence = pairs[:, 0][torch.sort(pairs[:, 1]).indices.tolist()]
+    return mapping_sequence
+
+class FTlayer(nn.Module):
+    def __init__(self, class_num, norm='none'):
+        super(FTlayer, self).__init__()
+        self.norm = norm
+        if self.norm == 'none':
+            self.linear = nn.Linear(1000, class_num)
+        else:
+            self.linear = nn.Linear(1000, class_num, bias=False)
+
+    def forward(self, x):
+        if self.norm == 'sigmoid':
+            weights = torch.sigmoid(self.linear.weight)
+        else:
+            weights = self.linear.weight
+        return x @ weights.T

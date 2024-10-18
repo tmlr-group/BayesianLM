@@ -4,10 +4,8 @@ import torch.nn.functional as F
 import numpy as np
 
 class PaddingVR(nn.Module):
-    '''
-        Padding-based Input Visual Reprogramming
-    '''
     def __init__(self, out_size, mask, init='zero', normalize=None):
+
         super(PaddingVR, self).__init__()
         assert mask.shape[0] == mask.shape[1]
         in_size = mask.shape[0]
@@ -23,7 +21,8 @@ class PaddingVR(nn.Module):
 
         mask = np.repeat(np.expand_dims(mask, 0), repeats=3, axis=0)
         mask = torch.Tensor(mask)
-        self.register_buffer("mask", F.pad(mask, (self.l_pad, self.r_pad, self.l_pad, self.r_pad), value=1))
+        self.register_buffer("mask", F.pad(mask, (self.l_pad, self.r_pad, self.l_pad, self.r_pad), value=1)) # register a buffer that should not to be considered a model parameter
+
     def forward(self, x):
         x = F.pad(x, (self.l_pad, self.r_pad, self.l_pad, self.r_pad), value=0) + torch.sigmoid(self.program) * self.mask
         if self.normalize is not None:
@@ -32,9 +31,6 @@ class PaddingVR(nn.Module):
 
 
 class WatermarkingVR(nn.Module):
-    '''
-        Watermarking-based Input Visual Reprogramming
-    '''
     def __init__(self, size, pad):
         super(WatermarkingVR, self).__init__()
 

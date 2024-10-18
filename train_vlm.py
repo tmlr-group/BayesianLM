@@ -15,13 +15,13 @@ from data import DEFAULT_TEMPLATE, ENSEMBLE_TEMPLATES, get_saparate_text_embeddi
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('--seed', type=int, default=0)
-    p.add_argument('--mapping', choices=["ilm", "blm", "blmpp"], default="blmpp")
+    p.add_argument('--mapping', choices=["ilm", "blm", "blmp"], default="blmp")
     p.add_argument('--dataset', choices=["cifar10", "cifar100", "dtd", "flowers102", "ucf101", "food101", "gtsrb", "svhn", "eurosat", "oxfordpets", "stanfordcars", "sun397"], default="sun397")
     args = p.parse_args()
 
     device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     set_seed(args.seed)
-    save_path = os.path.join(results_path, args.mapping + '_' + args.dataset + '_' + str(args.seed))
+    save_path = os.path.join(results_path, 'vlm_' + args.mapping + '_' + args.dataset + '_' + str(args.seed))
 
     model, preprocess = clip.load("ViT-B/32")
     convert_models_to_fp32(model)
@@ -55,15 +55,15 @@ if __name__ == '__main__':
     best_acc = 0.
     scaler = GradScaler()
     for epoch in range(config_vlm['epoch']):
-        # Label Mapping for ILM, BLM, BLM+
+        # Label Mapping for ILM, BLM, BLM++
         if args.mapping == 'ilm':
             mapping_matrix = one2one_mappnig_matrix(visual_prompt, network, loaders['train'])
             label_mapping = partial(label_mapping_base, mapping_sequence=mapping_matrix)
         elif args.mapping == 'blm':
             mapping_matrix = blm_reweight_matrix(visual_prompt, network, loaders['train'], lap=config_vlm['blm']['lap'])
             label_mapping = partial(label_mapping_calculation, mapping_matrix=mapping_matrix)
-        elif args.mapping == 'blmpp':
-            mapping_matrix = blmpp_reweight_matrix(visual_prompt, network, loaders['train'], lap=config_vlm['blmpp']['lap'], k=int(len(class_names) * config_vlm['blmpp']['topk_ratio']))
+        elif args.mapping == 'blmp':
+            mapping_matrix = blmp_reweight_matrix(visual_prompt, network, loaders['train'], lap=config_vlm['blmp']['lap'], k=int(len(class_names) * config_vlm['blmp']['topk_ratio']))
             label_mapping = partial(label_mapping_calculation, mapping_matrix=mapping_matrix)
 
         visual_prompt.train()
@@ -105,7 +105,7 @@ if __name__ == '__main__':
             total_num += y.size(0)
             true_num += torch.argmax(fx, 1).eq(y).float().sum().item()
             acc = true_num / total_num
-            pbar.set_postfix_str(f"Testing Acc {100 * acc:.2f}%")
+            pbar.set_postfix_str(f"Testing Acc {100 * acc:.2f}%, Best Acc {100 * best_acc:.2f}%")
 
         # Save CKPT
         state_dict = {

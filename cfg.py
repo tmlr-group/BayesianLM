@@ -22,10 +22,15 @@ def convert_models_to_fp32(model):
             p.grad.data = p.grad.data.float()
 
 config_vm = {'lr': 0.01, 'epoch': 200,
-             'blmpp': {'lap': 1, 'topk_ratio': 0.15},
-             'blm': {'lap': 1}
+             'blmp': {'lap': 1, 'topk_ratio': 0.15},
+             'blm': {'lap': 1},
+             'ft_lr': 0.1
              }
 config_vlm = {'lr': 40, 'epoch': 200,
-              'blmpp': {'lap': 1, 'topk_ratio': 0.15},
+              'blmp': {'lap': 1, 'topk_ratio': 0.15},
               'blm': {'lap': 1}
               }
+config_vm_fast = {'lr': 0.01, 'epoch': 200,
+             'blmp': {'lap': 1, 'topk_ratio': 0.15},
+             'blm': {'lap': 1}
+             }

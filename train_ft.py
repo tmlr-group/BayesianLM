@@ -1,4 +1,4 @@
-from functools import partial
+from tqdm import tqdm
 from torch.cuda.amp import autocast, GradScaler
 from torchvision import transforms
 import argparse
@@ -8,20 +8,20 @@ import os
 sys.path.append(".")
 from data import prepare_padding_data, prepare_watermarking_data, IMAGENETNORMALIZE
 from reprogramming import *
-from mapping import *
 from cfg import *
+from mapping import FTlayer
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('--reprogramming', choices=["padding", "watermarking"], default="padding")
-    p.add_argument('--mapping', choices=["rlm", "flm", "ilm", "blm", "blmp"], default="blmp")
+    p.add_argument('--restrict', choices=["none", "nobias", "sigmoid"], default="none")
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--dataset', choices=["cifar10", "cifar100", "dtd", "flowers102", "ucf101", "food101", "gtsrb", "svhn", "eurosat", "oxfordpets", "stanfordcars", "sun397"], default="sun397")
     args = p.parse_args()
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     set_seed(args.seed)
-    save_path = os.path.join(results_path, 'vm_' + args.mapping + '_' + args.reprogramming + '_' + args.dataset + '_' + str(args.seed))
+    save_path = os.path.join(results_path, 'vmft_' + args.restrict +  '_' + args.reprogramming + '_' + args.dataset + '_' + str(args.seed))
 
     imgsize = 224
     padding_size = imgsize / 2
@@ -54,6 +54,8 @@ if __name__ == '__main__':
     network = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1).to(device)
     network.requires_grad_(False)
     network.eval()
+    ft_logits = FTlayer(class_num=len(class_names), norm=args.restrict).to(device)
+    ft_logits.requires_grad_(True)
 
     # Visual Prompt
     if args.reprogramming == "padding":
@@ -65,34 +67,19 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(visual_prompt.parameters(), lr=config_vm['lr'])
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(0.5 * config_vm['epoch']), int(0.72 * config_vm['epoch'])], gamma=0.1)
 
+    ft_optimizer = torch.optim.Adam(ft_logits.parameters(), lr=config_vm['ft_lr'])
+    ft_scheduler = torch.optim.lr_scheduler.MultiStepLR(ft_optimizer, milestones=[int(0.5 * config_vm['epoch']), int(0.72 * config_vm['epoch'])], gamma=0.1)
+
     os.makedirs(save_path, exist_ok=True)
 
     # Train
     best_acc = 0.
     scaler = GradScaler()
 
-    # Label Mapping for RLM, fLM
-    if args.mapping == "rlm":
-        mapping_matrix = torch.randperm(1000)[:len(class_names)]
-        label_mapping = partial(label_mapping_base, mapping_sequence=mapping_matrix)
-    elif args.mapping == 'flm':
-        mapping_matrix = one2one_mappnig_matrix(visual_prompt, network, loaders['train'])
-        label_mapping = partial(label_mapping_base, mapping_sequence=mapping_matrix)
-
 
     for epoch in range(config_vm['epoch']):
-        # Label Mapping for ILM, BLM, BLM++
-        if args.mapping == 'ilm':
-            mapping_matrix = one2one_mappnig_matrix(visual_prompt, network, loaders['train'])
-            label_mapping = partial(label_mapping_base, mapping_sequence=mapping_matrix)
-        elif args.mapping == 'blm':
-            mapping_matrix = blm_reweight_matrix(visual_prompt, network, loaders['train'], lap=config_vm['blm']['lap'])
-            label_mapping = partial(label_mapping_calculation, mapping_matrix=mapping_matrix)
-        elif args.mapping == 'blmp':
-            mapping_matrix = blmp_reweight_matrix(visual_prompt, network, loaders['train'], lap=config_vm['blmp']['lap'], k=int(len(class_names) * config_vm['blmp']['topk_ratio']))
-            label_mapping = partial(label_mapping_calculation, mapping_matrix=mapping_matrix)
-
         visual_prompt.train()
+        ft_logits.train()
         total_num = 0
         true_num = 0
         loss_sum = 0
@@ -101,20 +88,24 @@ if __name__ == '__main__':
             pbar.set_description_str(f"Training Epo {epoch}", refresh=True)
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
+            ft_optimizer.zero_grad()
             with autocast():
-                fx = label_mapping(network(visual_prompt(x)))
+                fx = ft_logits(network(visual_prompt(x)))
                 loss = F.cross_entropy(fx, y, reduction='mean')
             scaler.scale(loss).backward()
             scaler.step(optimizer)
+            scaler.step(ft_optimizer)
             scaler.update()
             total_num += y.size(0)
             true_num += torch.argmax(fx, 1).eq(y).float().sum().item()
             loss_sum += loss.item() * fx.size(0)
             pbar.set_postfix_str(f"Training Acc {100 * true_num / total_num:.2f}%")
         scheduler.step()
+        ft_scheduler.step()
 
         # Test
         visual_prompt.eval()
+        ft_logits.eval()
         total_num = 0
         true_num = 0
         pbar = tqdm(loaders['test'], total=len(loaders['test']), desc=f"Testing Epo {epoch}", ncols=100)
@@ -122,7 +113,7 @@ if __name__ == '__main__':
             x, y = x.to(device), y.to(device)
             with torch.no_grad():
                 fx0 = network(visual_prompt(x))
-                fx = label_mapping(fx0)
+                fx = ft_logits(fx0)
             total_num += y.size(0)
             true_num += torch.argmax(fx, 1).eq(y).float().sum().item()
             acc = true_num / total_num
@@ -133,7 +124,7 @@ if __name__ == '__main__':
             "visual_prompt_dict": visual_prompt.state_dict(),
             "epoch": epoch,
             "best_acc": best_acc,
-            "mapping_matrix": mapping_matrix,
+            "mapping_matrix": ft_logits.state_dict(),
         }
         if acc > best_acc:
             best_acc = acc
