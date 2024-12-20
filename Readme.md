@@ -1,4 +1,4 @@
-# Bayesian-guided Label Mapping for Visual Reprogramming
+# Bayesian-guided Label Mapping for Visual Reprogramming [NeurIPS 2024 Oral]
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
 [![Static Badge](https://img.shields.io/badge/Pub-NeurIPS'24-red)](https://arxiv.org/abs/2410.24018)
 
